@@ -1,0 +1,148 @@
+{
+  "10095": {
+    "nombre": "JUZGADO CUARTO CIVIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA CON RESIDENCIA EN NAUCALPAN",
+    "region": "TLALNEPANTLA",
+    "tipo": "CIVIL"
+  },
+  "10096": {
+    "nombre": "JUZGADO QUINTO CIVIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA CON RESIDENCIA EN NAUCALPAN",
+    "region": "TLALNEPANTLA",
+    "tipo": "CIVIL"
+  },
+  "10100": {
+    "nombre": "JUZGADO NOVENO CIVIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA CON RESIDENCIA EN HUIXQUILUCAN",
+    "region": "TLALNEPANTLA",
+    "tipo": "CIVIL"
+  },
+  "57": {
+    "nombre": "JUZGADO SEGUNDO CIVIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA",
+    "region": "TLALNEPANTLA",
+    "tipo": "CIVIL"
+  },
+
+  "10087": {
+    "nombre": "JUZGADO PRIMERO MERCANTIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA",
+    "region": "TLALNEPANTLA",
+    "tipo": "MERCANTIL"
+  },
+  "10091": {
+    "nombre": "JUZGADO QUINTO MERCANTIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA CON RESIDENCIA EN NAUCALPAN",
+    "region": "TLALNEPANTLA",
+    "tipo": "MERCANTIL"
+  },
+  "10088": {
+    "nombre": "JUZGADO SEGUNDO MERCANTIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA",
+    "region": "TLALNEPANTLA",
+    "tipo": "MERCANTIL"
+  },
+  "10151": {
+    "nombre": "JUZGADO SEXTO MERCANTIL DEL DISTRITO JUDICIAL DE TLALNEPANTLA CON RESIDENCIA EN NAUCALPAN",
+    "region": "TLALNEPANTLA",
+    "tipo": "MERCANTIL"
+  },
+
+  "109": {
+    "nombre": "JUZGADO CUARTO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+  "10124": {
+    "nombre": "JUZGADO QUINTO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA CON RESIDENCIA EN METEPEC",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+  "58": {
+    "nombre": "JUZGADO SEGUNDO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+  "175": {
+    "nombre": "JUZGADO SEPTIMO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA CON RESIDENCIA EN METEPEC",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+  "10125": {
+    "nombre": "JUZGADO SEXTO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA CON RESIDENCIA EN METEPEC",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+  "87": {
+    "nombre": "JUZGADO TERCERO CIVIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "CIVIL"
+  },
+
+  "10152": {
+    "nombre": "JUZGADO OCTAVO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10083": {
+    "nombre": "JUZGADO PRIMERO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10123": {
+    "nombre": "JUZGADO QUINTO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10084": {
+    "nombre": "JUZGADO SEGUNDO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10150": {
+    "nombre": "JUZGADO SEPTIMO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10122": {
+    "nombre": "JUZGADO SEXTO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+  "10085": {
+    "nombre": "JUZGADO TERCERO MERCANTIL DEL DISTRITO JUDICIAL DE TOLUCA",
+    "region": "TOLUCA",
+    "tipo": "MERCANTIL"
+  },
+
+  "116": {
+    "nombre": "JUZGADO CUARTO CIVIL DEL DISTRITO JUDICIAL DE CUAUTITLAN",
+    "region": "CUAUTITLAN",
+    "tipo": "CIVIL"
+  },
+  "14": {
+    "nombre": "JUZGADO PRIMERO CIVIL DEL DISTRITO JUDICIAL DE CUAUTITLAN",
+    "region": "CUAUTITLAN",
+    "tipo": "CIVIL"
+  },
+  "731": {
+    "nombre": "JUZGADO QUINTO CIVIL DEL DISTRITO JUDICIAL DE CUAUTITLAN",
+    "region": "CUAUTITLAN",
+    "tipo": "CIVIL"
+  },
+  "10015": {
+    "nombre": "JUZGADO SEGUNDO CIVIL DEL DISTRITO JUDICIAL DE CUAUTITLÁN",
+    "region": "CUAUTITLAN",
+    "tipo": "CIVIL"
+  },
+
+  "10184": {
+    "nombre": "JUZGADO QUINTO CIVIL DEL DISTRITO JUDICIAL DE ECATEPEC DE MORELOS CON RESIDENCIA EN TECÁMAC",
+    "region": "ECATEPEC",
+    "tipo": "CIVIL"
+  },
+  "11469": {
+    "nombre": "JUZGADO SEXTO CIVIL DEL DISTRITO JUDICIAL DE ECATEPEC DE MORELOS CON RESIDENCIA EN TECÁMAC",
+    "region": "ECATEPEC",
+    "tipo": "CIVIL"
+  },
+
+  "10182": {
+    "nombre": "JUZGADO PRIMERO MERCANTIL DEL DISTRITO JUDICIAL DE ECATEPEC DE MORELOS",
+    "region": "ECATEPEC",
+    "tipo": "MERCANTIL"
+  }
+}

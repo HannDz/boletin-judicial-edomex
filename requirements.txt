@@ -1,0 +1,11 @@
+requests
+beautifulsoup4
+lxml
+pdfplumber
+pytesseract
+pillow
+opencv-python
+python-dotenv
+SQLAlchemy
+psycopg[binary]
+pypdf
