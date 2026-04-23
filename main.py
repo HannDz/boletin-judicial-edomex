@@ -9,6 +9,7 @@ from redirection import crear_sesion
 from pdf_downloader import iterar_fechas, construir_url, nombre_archivo, descargar_pdf
 from juzgados_catalogo import obtener_info_juzgado
 from text_extractor import leer_texto_pdf
+from extractor_js import *
 # -----------------------------
 # Configuración de carpetas
 # -----------------------------
@@ -48,7 +49,6 @@ for juzgado in settings.pdf_juzgados:
 
     for fecha in iterar_fechas(settings.pdf_fecha_ini, settings.pdf_fecha_fin):
         url = ""
-
         try:
             url = construir_url(fecha, juzgado)
             archivo = carpeta / juzgado / nombre_archivo(fecha, juzgado)
@@ -66,9 +66,16 @@ for juzgado in settings.pdf_juzgados:
             )
             if ok:
                 texto = leer_texto_pdf(str(archivo))
+                parser = BoletinEdomexParser()
+                registros = parser.parse(texto, numero_boletin=1, numero_pagina=1)
                 textos.append(texto)
                 total_ok += 1
-                print(texto)
+                # for text in textos:
+                #     print(text)
+
+                for text in registros:
+                    print(text)
+                print('')
             else:
                 total_no += 1
                 print("No se pudo descargar el PDF")
