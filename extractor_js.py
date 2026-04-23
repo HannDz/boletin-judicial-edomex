@@ -21,7 +21,6 @@ class BoletinEdomexParser:
             "DICIEMBRE": 12,
         }
 
-        # Solo los tipos que te interesan
         self.tipos_juicio = [
             "CONTROVERSIA DE ARRENDAMIENTO",
             "ARRENDAMIENTO",
@@ -88,6 +87,16 @@ class BoletinEdomexParser:
             re.IGNORECASE
         )
 
+        self.re_pagina = re.compile(
+            r"\n=+\nPágina\s+(\d+)\n=+\n",
+            re.IGNORECASE
+        )
+
+        self.re_numero_boletin = re.compile(
+            r"\bNo\.\s*(\d+)\b",
+            re.IGNORECASE
+        )
+
     def limpiar_espacios(self, texto: str) -> str:
         return re.sub(r"\s+", " ", texto or "").strip()
 
@@ -108,6 +117,7 @@ class BoletinEdomexParser:
 
     def normalizar_texto(self, texto: str) -> str:
         texto = texto.replace("\r", "\n")
+        texto = texto.replace("\xa0", " ")
         texto = re.sub(r"[ \t]+", " ", texto)
         texto = re.sub(r"\n+", "\n", texto)
         return texto.strip()
@@ -116,6 +126,12 @@ class BoletinEdomexParser:
         if not texto:
             return None
         return self.limpiar_espacios(self.quitar_acentos(texto.upper()))
+
+    def extraer_numero_boletin(self, texto: str) -> int | None:
+        match = self.re_numero_boletin.search(texto)
+        if not match:
+            return None
+        return int(match.group(1))
 
     def extraer_juzgado(self, texto: str) -> str | None:
         match = self.re_juzgado.search(texto)
@@ -139,6 +155,31 @@ class BoletinEdomexParser:
             return None
 
         return date(anio, mes, dia)
+
+    def extraer_paginas(self, texto: str) -> list[tuple[int, str]]:
+        """
+        Divide el texto completo por los separadores:
+        ================================================================================
+        Página X
+        ================================================================================
+        """
+        texto = self.normalizar_texto(texto)
+
+        matches = list(self.re_pagina.finditer("\n" + texto))
+        if not matches:
+            return [(1, texto)]
+
+        paginas = []
+        full_text = "\n" + texto
+
+        for i, match in enumerate(matches):
+            numero_pagina = int(match.group(1))
+            inicio = match.end()
+            fin = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+            contenido = full_text[inicio:fin].strip()
+            paginas.append((numero_pagina, contenido))
+
+        return paginas
 
     def extraer_bloques(self, texto: str) -> list[str]:
         return [m.group(0).strip() for m in self.re_bloque.finditer(texto)]
@@ -227,7 +268,6 @@ class BoletinEdomexParser:
         estatus, resto = self.detectar_estatus(resto)
         tipo_juicio, resto = self.detectar_tipo_juicio(resto)
 
-        # Si no es uno de los 4 tipos buscados, no regresa nada
         if tipo_juicio not in {"DESAHUCIO", "ARRENDAMIENTO", "ORDINARIO CIVIL", "EJECUTIVO MERCANTIL"}:
             return []
 
@@ -286,6 +326,7 @@ class BoletinEdomexParser:
                 r.get("demandado"),
                 r.get("tipo_juicio"),
                 r.get("estatus"),
+                r.get("numero_pagina"),
             )
             if key in vistos:
                 continue
@@ -294,31 +335,31 @@ class BoletinEdomexParser:
 
         return resultado
 
-    def parse(
-        self,
-        texto: str,
-        numero_boletin: int | None = None,
-        numero_pagina: int | None = None
-    ) -> list[dict]:
+    def parse(self, texto: str) -> list[dict]:
         texto = self.normalizar_texto(texto)
 
-        juzgado = self.extraer_juzgado(texto)
-        sala = self.extraer_sala(texto)
-        fecha_publicacion = self.extraer_fecha_publicacion(texto)
+        numero_boletin = self.extraer_numero_boletin(texto)
+        paginas = self.extraer_paginas(texto)
 
-        bloques = self.extraer_bloques(texto)
         registros = []
 
-        for bloque in bloques:
-            regs = self.parsear_bloque(
-                bloque=bloque,
-                fecha_publicacion=fecha_publicacion,
-                juzgado=juzgado,
-                sala=sala,
-                numero_boletin=numero_boletin,
-                numero_pagina=numero_pagina
-            )
-            if regs:
-                registros.extend(regs)
+        for numero_pagina, contenido_pagina in paginas:
+            juzgado = self.extraer_juzgado(contenido_pagina)
+            sala = self.extraer_sala(contenido_pagina)
+            fecha_publicacion = self.extraer_fecha_publicacion(contenido_pagina)
+
+            bloques = self.extraer_bloques(contenido_pagina)
+
+            for bloque in bloques:
+                regs = self.parsear_bloque(
+                    bloque=bloque,
+                    fecha_publicacion=fecha_publicacion,
+                    juzgado=juzgado,
+                    sala=sala,
+                    numero_boletin=numero_boletin,
+                    numero_pagina=numero_pagina
+                )
+                if regs:
+                    registros.extend(regs)
 
         return self.deduplicar(registros)
