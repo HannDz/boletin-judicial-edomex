@@ -10,6 +10,7 @@ from pdf_downloader import iterar_fechas, construir_url, nombre_archivo, descarg
 from juzgados_catalogo import obtener_info_juzgado
 from text_extractor import leer_texto_pdf
 from extractor_js import *
+from repository import *
 # -----------------------------
 # Configuración de carpetas
 # -----------------------------
@@ -72,7 +73,12 @@ for juzgado in settings.pdf_juzgados:
                 total_ok += 1
                 # for text in textos:
                 #     print(text)
+                region = info["region"]
 
+                cantidad = insertar_expedientes_bulk(
+                    registros=registros,
+                    region=region
+                )
                 for text in registros:
                     print(text)
                 print('')
