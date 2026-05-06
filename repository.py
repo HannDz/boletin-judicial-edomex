@@ -181,8 +181,54 @@ def insertar_expediente(registro: dict, region: str) -> int:
         result = conn.execute(sql_insert, row)
         return result.rowcount if result.rowcount is not None else 1
 
+def actualizar_total_paginas(id_procesamiento: int, total_paginas: int) -> None:
+    sql = text("""
+        update procesamiento_boletin
+        set total_paginas = :total_paginas
+        where id = :id;
+    """)
+    with engine.begin() as conn:
+        conn.execute(sql, {"id": id_procesamiento, "total_paginas": total_paginas})
+
+REGION_TO_PROC_TABLE = {
+    "TLALNEPANTLA": "procesamiento_boletin_tlalnepantla",
+    "TOLUCA": "procesamiento_boletin_toluca",
+    "CUAUTITLAN": "procesamiento_boletin_cuautitlan",
+    "ECATEPEC": "procesamiento_boletin_ecatepec",
+}
+
+def existe_procesamiento_por_region(region: str, fecha, url) -> bool:
+    region = (region or "").strip().upper()
+
+    tabla = REGION_TO_PROC_TABLE.get(region)
+    if not tabla:
+        raise ValueError(f"Región no soportada: {region}")
+
+    sql = text(f"""
+        SELECT 1
+        FROM {tabla}
+        WHERE fecha_boletin = :fecha
+          AND url_boletin = :url
+        LIMIT 1
+    """)
+
+    with engine.connect() as conn:
+        return conn.execute(sql, {
+            "fecha": fecha,
+            "url": url
+        }).first() is not None
+    
+def obtener_tabla_procesamiento_por_region(region: str) -> str:
+    region = (region or "").strip().upper()
+
+    tabla = REGION_TO_PROC_TABLE.get(region)
+    if not tabla:
+        raise ValueError(f"No existe tabla de procesamiento para la región: {region}")
+
+    return tabla
 
 def insertar_procesamiento_boletin(
+    region: str,
     fecha_boletin: date,
     url_boletin: str,
     estado: str = "INICIADO",
@@ -191,15 +237,25 @@ def insertar_procesamiento_boletin(
     descargado: bool | None = None,
     nombre_archivo: str | None = None,
 ) -> None:
-    sql = text("""
-        insert into procesamiento_boletin (
-            fecha_boletin, url_boletin, estado,
-            total_paginas, total_expedientes,
-            descargado, nombre_archivo
-        ) values (
-            :fecha_boletin, :url_boletin, :estado,
-            :total_paginas, :total_expedientes,
-            :descargado, :nombre_archivo
+    tabla = obtener_tabla_procesamiento_por_region(region)
+
+    sql = text(f"""
+        INSERT INTO public.{tabla} (
+            fecha_boletin,
+            url_boletin,
+            estado,
+            total_paginas,
+            total_expedientes,
+            descargado,
+            nombre_archivo
+        ) VALUES (
+            :fecha_boletin,
+            :url_boletin,
+            :estado,
+            :total_paginas,
+            :total_expedientes,
+            :descargado,
+            :nombre_archivo
         );
     """)
 
@@ -213,25 +269,3 @@ def insertar_procesamiento_boletin(
             "descargado": descargado,
             "nombre_archivo": nombre_archivo,
         })
-
-
-def actualizar_total_paginas(id_procesamiento: int, total_paginas: int) -> None:
-    sql = text("""
-        update procesamiento_boletin
-        set total_paginas = :total_paginas
-        where id = :id;
-    """)
-    with engine.begin() as conn:
-        conn.execute(sql, {"id": id_procesamiento, "total_paginas": total_paginas})
-
-
-def existe_procesamiento(fecha_boletin: date, url_boletin: str) -> bool:
-    sql = text("""
-        select 1
-        from procesamiento_boletin
-        where fecha_boletin = :fecha
-          and url_boletin = :url
-        limit 1;
-    """)
-    with engine.connect() as conn:
-        return conn.execute(sql, {"fecha": fecha_boletin, "url": url_boletin}).first() is not None

@@ -35,6 +35,7 @@ textos: list[str] = []
 for juzgado in settings.pdf_juzgados:
     try:
         info = obtener_info_juzgado(juzgado)
+        region = info["region"]
         print(f"\nProcesando juzgado: {juzgado} - {info.get('nombre')}")
 
     except Exception as e_juzgado:
@@ -52,13 +53,37 @@ for juzgado in settings.pdf_juzgados:
         url = ""
         try:
             url = construir_url(fecha, juzgado)
+        except Exception as e_pdfsrc:
+            log_error_boletin(fecha, url, "Extraer PDF source", e_pdfsrc, 
+                              extra={
+                    "juzgado": juzgado,
+                    "nombre_juzgado": info.get("nombre"),
+                    "region": info.get("region"),
+                    "tipo": info.get("tipo")
+                })
+            continue
+        
+        try:
+            if existe_procesamiento_por_region(region, fecha, url):
+                print(f"Ya existe {url}")
+                continue
+
             archivo = carpeta / juzgado / nombre_archivo(fecha, juzgado)
 
             if archivo.exists():
                 print(f"Ya existe: {archivo}")
                 total_existentes += 1
                 continue
-
+        except Exception as e_pdfsrc:
+            log_error_boletin(fecha, url, "Validación de archivo PDF", e_pdfsrc,
+                              extra={
+                    "juzgado": juzgado,
+                    "nombre_juzgado": info.get("nombre"),
+                    "region": info.get("region"),
+                    "tipo": info.get("tipo")
+                })
+            continue
+        try:
             ok = descargar_pdf(
                 session=session,
                 url=url,
@@ -66,22 +91,32 @@ for juzgado in settings.pdf_juzgados:
                 timeout=settings.pdf_timeout
             )
             if ok:
-                texto = leer_texto_pdf(str(archivo))
+                texto, total_paginas = leer_texto_pdf(str(archivo))
                 parser = BoletinEdomexParser()
                 registros = parser.parse(texto)
                 textos.append(texto)
                 total_ok += 1
                 # for text in textos:
                 #     print(text)
-                region = info["region"]
+                try:
+                    cantidad = insertar_expedientes_bulk(
+                        registros=registros,
+                        region=region
+                    )
 
-                cantidad = insertar_expedientes_bulk(
-                    registros=registros,
-                    region=region
-                )
-                for text in registros:
-                    print(text)
-                print('')
+                    if cantidad > 0:
+                        insertar_procesamiento_boletin(
+                            region=region,
+                            fecha_boletin=fecha,
+                            url_boletin=url,
+                            estado="TERMINADO",
+                            total_paginas=total_paginas,
+                            total_expedientes=len(registros),
+                            descargado=False
+                        )
+                except Exception as e_db:
+                    log_error_boletin(fecha, url, "Inserción BD", e_db, {"total_expedientes": len(registros)})
+                    continue
             else:
                 total_no += 1
                 print("No se pudo descargar el PDF")

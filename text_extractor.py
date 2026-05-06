@@ -1,16 +1,18 @@
 from pathlib import Path
 from pypdf import PdfReader
 
-def leer_texto_pdf(ruta_pdf: str) -> str:
+def leer_texto_pdf(ruta_pdf: str) -> tuple[str, int]:
     """
     Lee todo el texto del PDF incluyendo separadores por página
-    y después elimina el archivo.
+    y devuelve (texto, total_paginas).
+    Además elimina el archivo.
     """
     ruta = Path(ruta_pdf)
 
     try:
         reader = PdfReader(str(ruta))
         partes = []
+        total_paginas = len(reader.pages)
 
         for i, pagina in enumerate(reader.pages, start=1):
             texto = pagina.extract_text() or ""
@@ -18,7 +20,9 @@ def leer_texto_pdf(ruta_pdf: str) -> str:
                 f"\n{'=' * 80}\nPágina {i}\n{'=' * 80}\n{texto}"
             )
 
-        return "\n".join(partes)
+        texto_final = "\n".join(partes)
+
+        return texto_final, total_paginas
 
     finally:
         try:
