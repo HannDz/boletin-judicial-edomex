@@ -44,9 +44,11 @@ class BoletinEdomexParser:
         self.map_estatus = {
             "ACUERDO": "ACUERDO",
             "ACUERDOS": "ACUERDO",
+            "INICIAL": "INICIAL",
             "SENTENCIA INTERLOCUT": "SENTENCIA INTERLOCUTORIA",
             "SENTENCIA INTERLOCUTORIA": "SENTENCIA INTERLOCUTORIA",
             "SENTENCIA": "SENTENCIA",
+            "SENTENCIA DEFINITIVA": "SENTENCIA DEFINITIVA",
         }
 
         self._build_regex()
@@ -191,12 +193,18 @@ class BoletinEdomexParser:
         return self.map_estatus.get(e, e)
 
     def detectar_estatus(self, texto: str) -> tuple[str | None, str]:
-        match = self.re_estatus.search(texto.strip())
+        match = re.search(
+            r"\((ACUERDO|ACUERDOS|INICIAL|SENTENCIA DEFINITIVA|SENTENCIA INTERLOCUT|SENTENCIA INTERLOCUTORIA|SENTENCIA)\)",
+            texto,
+            flags=re.IGNORECASE
+        )
+
         if not match:
             return None, texto.strip()
 
         estatus = self.normalizar_estatus(match.group(1))
-        limpio = re.sub(r"\([^)]+\)\s*$", "", texto).strip()
+        limpio = texto[:match.start()].strip()
+
         return estatus, limpio
 
     def detectar_tipo_juicio(self, resto: str) -> tuple[str | None, str]:
@@ -216,9 +224,22 @@ class BoletinEdomexParser:
         if not demandado:
             return []
 
+        # 1) Primero revisar casos especiales
+        especiales = self.separar_demandados_especiales(demandado)
+        if especiales:
+            return especiales
+
+        # 2) Separación normal por coma
         plano = demandado.replace("\n", " ")
         partes = [p.strip() for p in plano.split(",") if p.strip()]
-        return partes
+
+        resultado = []
+        for p in partes:
+            limpio = self.limpiar_demandado_individual(p)
+            if limpio:
+                resultado.append(limpio)
+
+        return resultado
 
     def nivel_confianza_registro(
         self,
@@ -335,7 +356,7 @@ class BoletinEdomexParser:
 
         return resultado
 
-    def parse(self, texto: str) -> list[dict]:
+    def parse(self, texto: str, fecha: str) -> list[dict]:
         texto = self.normalizar_texto(texto)
 
         numero_boletin = self.extraer_numero_boletin(texto)
@@ -346,7 +367,7 @@ class BoletinEdomexParser:
         for numero_pagina, contenido_pagina in paginas:
             juzgado = self.extraer_juzgado(contenido_pagina)
             sala = self.extraer_sala(contenido_pagina)
-            fecha_publicacion = self.extraer_fecha_publicacion(contenido_pagina)
+            fecha_publicacion = fecha #self.extraer_fecha_publicacion(contenido_pagina)
 
             bloques = self.extraer_bloques(contenido_pagina)
 
@@ -363,3 +384,64 @@ class BoletinEdomexParser:
                     registros.extend(regs)
 
         return self.deduplicar(registros)
+    def limpiar_demandado_individual(self, texto: str | None) -> str | None:
+        if not texto:
+            return None
+
+        t = self.limpiar_espacios(texto.replace("\n", " "))
+
+        # Quitar frases genéricas después del nombre
+        patrones_corte = [
+            r"\s+Y/O\s+CUALQUIER\s+OTRO\s+HABITANTE.*$",
+            r"\s+Y/O\s+CUALQUIER\s+OTRO\s+OCUPANTE.*$",
+            r"\s+Y/O\s+CUALQUIER\s+OTRO\s+POSEEDOR.*$",
+            r"\s+CUALQUIER\s+OTRO\s+HABITANTE.*$",
+            r"\s+CUALQUIER\s+OTRO\s+OCUPANTE.*$",
+            r"\s+CUALQUIER\s+OTRO\s+POSEEDOR.*$",
+            r"\s+OCUPANTE\s+O\s+POSEEDOR.*$",
+        ]
+
+        for patron in patrones_corte:
+            t = re.sub(patron, "", t, flags=re.IGNORECASE)
+
+        t = t.strip(" .,-")
+        return t or None
+
+
+    def separar_demandados_especiales(self, demandado: str) -> list[str] | None:
+        """
+        Casos especiales de morales/instituciones.
+        Ejemplo:
+        QUIEN SE HACE LLAMAR TAMBIÉN CITIBANAMEX Y EL INSTITUTO...
+        """
+        if not demandado:
+            return None
+
+        texto = self.limpiar_espacios(demandado.replace("\n", " "))
+        texto_norm = self.normalizar_nombre(texto) or ""
+
+        if "QUIEN SE HACE LLAMAR TAMBIEN" in texto_norm:
+            # Quita lo anterior hasta "TAMBIÉN"
+            texto_limpio = re.sub(
+                r".*?QUIEN\s+SE\s+HACE\s+LLAMAR\s+TAMBI[EÉ]N\s+",
+                "",
+                texto,
+                flags=re.IGNORECASE
+            )
+
+            # Divide por " Y EL " o " Y LA "
+            partes = re.split(
+                r"\s+Y\s+(?=EL\s+|LA\s+|LOS\s+|LAS\s+)",
+                texto_limpio,
+                flags=re.IGNORECASE
+            )
+
+            resultado = []
+            for p in partes:
+                p = self.limpiar_demandado_individual(p)
+                if p:
+                    resultado.append(p)
+
+            return resultado if resultado else None
+
+        return None

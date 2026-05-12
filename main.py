@@ -93,7 +93,7 @@ for juzgado in settings.pdf_juzgados:
             if ok:
                 texto, total_paginas = leer_texto_pdf(str(archivo))
                 parser = BoletinEdomexParser()
-                registros = parser.parse(texto)
+                registros = parser.parse(texto, fecha)
                 textos.append(texto)
                 total_ok += 1
                 # for text in textos:
