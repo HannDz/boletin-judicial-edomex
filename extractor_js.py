@@ -183,9 +183,30 @@ class BoletinEdomexParser:
 
         return paginas
 
-    def extraer_bloques(self, texto: str) -> list[str]:
-        return [m.group(0).strip() for m in self.re_bloque.finditer(texto)]
+    def extraer_bloques(self, texto: str) -> list[tuple[int, str]]:
+        return [
+            (m.start(), m.group(0).strip())
+            for m in self.re_bloque.finditer(texto)
+        ]
+    def extraer_sala_antes_de_posicion(
+        self,
+        texto: str,
+        posicion: int,
+        sala_actual: str | None = None
+    ) -> str | None:
+        """
+        Busca la última secretaría antes del expediente actual.
+        Si no encuentra, conserva la sala anterior.
+        """
+        texto_anterior = texto[:posicion]
+        matches = list(self.re_sala.finditer(texto_anterior))
 
+        if not matches:
+            return sala_actual
+
+        ultima = matches[-1]
+        return self.limpiar_espacios(ultima.group(1).upper())
+    
     def normalizar_estatus(self, estatus: str | None) -> str | None:
         if not estatus:
             return None
@@ -224,20 +245,43 @@ class BoletinEdomexParser:
         if not demandado:
             return []
 
-        # 1) Primero revisar casos especiales
         especiales = self.separar_demandados_especiales(demandado)
         if especiales:
             return especiales
 
-        # 2) Separación normal por coma
         plano = demandado.replace("\n", " ")
-        partes = [p.strip() for p in plano.split(",") if p.strip()]
+        plano = self.limpiar_espacios(plano)
+        plano = self.limpiar_parentesis_no_estatus(plano) or ""
+        # Cortar cualquier estatus que se haya colado
+        plano = re.split(
+            r"\((?:ACUERDO|ACUERDOS|INICIAL|SENTENCIA DEFINITIVA|SENTENCIA INTERLOCUT|SENTENCIA INTERLOCUTORIA|SENTENCIA)\)",
+            plano,
+            maxsplit=1,
+            flags=re.IGNORECASE
+        )[0]
+
+        # Primer corte por coma
+        partes = [
+            p.strip()
+            for p in plano.split(",")
+            if p.strip()
+        ]
 
         resultado = []
+
         for p in partes:
             limpio = self.limpiar_demandado_individual(p)
-            if limpio:
-                resultado.append(limpio)
+
+            if not limpio:
+                continue
+
+            # Segundo corte: casos "PERSONA Y PERSONA"
+            subpartes = self.separar_por_conjuncion_personas(limpio)
+
+            for sp in subpartes:
+                sp_limpio = self.limpiar_demandado_individual(sp)
+                if sp_limpio:
+                    resultado.append(sp_limpio)
 
         return resultado
 
@@ -364,33 +408,57 @@ class BoletinEdomexParser:
 
         registros = []
 
+        juzgado_actual = None
+        sala_actual = None
+        fecha_actual = None
+
         for numero_pagina, contenido_pagina in paginas:
-            juzgado = self.extraer_juzgado(contenido_pagina)
-            sala = self.extraer_sala(contenido_pagina)
-            fecha_publicacion = fecha #self.extraer_fecha_publicacion(contenido_pagina)
+            juzgado_pagina = self.extraer_juzgado(contenido_pagina)
+
+            if juzgado_pagina:
+                juzgado_actual = juzgado_pagina
 
             bloques = self.extraer_bloques(contenido_pagina)
 
-            for bloque in bloques:
+            for posicion_bloque, bloque in bloques:
+                sala_bloque = self.extraer_sala_antes_de_posicion(
+                    contenido_pagina,
+                    posicion_bloque,
+                    sala_actual
+                )
+
+                fecha_bloque = fecha
+
+                if sala_bloque:
+                    sala_actual = sala_bloque
+
+                if fecha_bloque:
+                    fecha_actual = fecha_bloque
+
                 regs = self.parsear_bloque(
                     bloque=bloque,
-                    fecha_publicacion=fecha_publicacion,
-                    juzgado=juzgado,
-                    sala=sala,
+                    fecha_publicacion=fecha_actual,
+                    juzgado=juzgado_actual,
+                    sala=sala_actual,
                     numero_boletin=numero_boletin,
                     numero_pagina=numero_pagina
                 )
+
                 if regs:
                     registros.extend(regs)
 
         return self.deduplicar(registros)
+    
     def limpiar_demandado_individual(self, texto: str | None) -> str | None:
         if not texto:
             return None
 
         t = self.limpiar_espacios(texto.replace("\n", " "))
 
-        # Quitar frases genéricas después del nombre
+        # quitar Y/O suelto al final
+        t = re.sub(r"\s+Y/O\s*$", "", t, flags=re.IGNORECASE)
+
+        # quitar frases genéricas
         patrones_corte = [
             r"\s+Y/O\s+CUALQUIER\s+OTRO\s+HABITANTE.*$",
             r"\s+Y/O\s+CUALQUIER\s+OTRO\s+OCUPANTE.*$",
@@ -404,8 +472,10 @@ class BoletinEdomexParser:
         for patron in patrones_corte:
             t = re.sub(patron, "", t, flags=re.IGNORECASE)
 
+        # limpieza final
         t = t.strip(" .,-")
-        return t or None
+
+        return t or None    
 
 
     def separar_demandados_especiales(self, demandado: str) -> list[str] | None:
@@ -445,3 +515,68 @@ class BoletinEdomexParser:
             return resultado if resultado else None
 
         return None
+    
+    def separar_por_conjuncion_personas(self, texto: str) -> list[str]:
+        """
+        Separa casos como:
+        ALICIA SALCEDO MORA Y FLAVIO SANCHEZ LOPEZ
+
+        o:
+        CLAUDIA BATALLA MORELL E INSTITUTO DE LA FUNCIÓN REGISTRAL...
+
+        en registros separados.
+        """
+        if not texto:
+            return []
+
+        t = self.limpiar_espacios(texto.replace("\n", " "))
+
+        t_norm = self.normalizar_nombre(t) or ""
+
+        frases_no_separar = [
+            "Y/O",
+            "Y OTRO",
+            "Y OTROS",
+            "Y CUALQUIER",
+            "Y QUIEN",
+            "Y/O CUALQUIER",
+        ]
+
+        if any(frase in t_norm for frase in frases_no_separar):
+            return [t]
+
+        # Separar por " Y " o " E " únicamente si después parece iniciar otro demandado
+        partes = re.split(
+            r"\s+(?:Y|E)\s+(?=(?:[A-ZÁÉÍÓÚÑ]{2,}|EL\s+|LA\s+|LOS\s+|LAS\s+|INSTITUTO\s+|BANCO\s+|SOCIEDAD\s+|SECRETAR[IÍ]A\s+))",
+            t,
+            maxsplit=1,
+            flags=re.IGNORECASE
+        )
+
+        if len(partes) != 2:
+            return [t]
+
+        izquierda = partes[0].strip(" .,-")
+        derecha = partes[1].strip(" .,-")
+
+        if not izquierda or not derecha:
+            return [t]
+
+        # Evitar cortar nombres muy cortos o frases raras
+        if len(izquierda.split()) >= 3 and len(derecha.split()) >= 2:
+            return [izquierda, derecha]
+
+        return [t]
+    def limpiar_parentesis_no_estatus(self, texto: str | None) -> str | None:
+        if not texto:
+            return None
+
+        # Quita paréntesis informativos que NO deben ser demandados
+        texto = re.sub(
+            r"\((?:ESTADO PROCESAL|EST\.?\s*PROCESAL|TRÁMITE|TRAMITE)\)",
+            "",
+            texto,
+            flags=re.IGNORECASE
+        )
+
+        return self.limpiar_espacios(texto)
